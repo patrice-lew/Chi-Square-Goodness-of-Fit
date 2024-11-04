@@ -1,0 +1,151 @@
+---
+title: "Chi-Square Goodness-of-Fit"
+author: "Patrice Lewis and Julissa Martinez"
+date: "`r Sys.Date()`"
+format:
+  html:
+    self-contained: true
+    toc: true
+    code-fold: true
+---
+
+# What is Chi-Square Goodness-of-Fit
+
+The Chi-square goodness-of-fit test is used to assess whether an observed distribution differs from the expected distribution among categorical variables in discrete data. This test measures the extent to which a statistical model fits the observations.
+
+## Assumptions
+
+-   The average expected counts are \> or = '5'
+-   Categorical variables
+-   All individual expected counts are \> or = '1' and independent of each other
+-   The sample was randomly selected
+
+# R Function
+
+chisq.test(x, p)
+
+x: a numeric vector for observed frequencies p: a numeric vector for expected proportions
+
+NB: This test exist in the 'stats' package
+
+# Load Libraries
+
+```{r setup}
+#| warning: false
+#| code-fold: false
+
+library(tidyverse)
+library(table1)
+library(skimr)
+library(ggplot2)
+```
+
+# Example 1: Performing Chi-Square Goodness-of-Fit Test
+
+Data source: "titanic.csv"
+
+```{r data-download}
+#| warning: false
+#| code-fold: false
+
+titanic <- read_csv("raw_data/titanic.csv")
+
+```
+
+## Hypothesis 1
+
+H0: Passenger classes were not equally common on-board the Titanic\
+H1: Passenger classes were equally common on-board the Titanic
+
+## Data Exploration & Cleaning
+
+```{r data-cleaning}
+#| warning: false
+#| code-fold: false
+
+# Uses skim to get descriptive statistics of the data
+skim(titanic)
+
+# str(titanic)
+
+# Examines variable of interest - passenger class
+summary(titanic$Pclass)
+
+# Three distinct classes - 1,2,3
+unique(titanic$Pclass)
+
+# Selects variables of interest
+titanic_cleaned <- titanic %>% 
+  select(
+    pid = PassengerId,
+    pclass = Pclass,
+  )
+
+# Outputs frequency table of passenger class
+pclass_table <-
+  table1( 
+    ~ factor(pclass), 
+    data = titanic_cleaned
+)
+
+pclass_table
+```
+
+## Graphs
+
+```{r graphs}
+#| warning: false
+
+
+# Outputs pclass histogram to visualize frequency and distribution
+hist_pclass <- titanic_cleaned %>% 
+pull(pclass) %>% 
+  hist(main = "Passenger class onboard Titanic")
+
+# Data slightly right-skewed
+
+
+#### Bar chart ####
+
+ggplot(
+  titanic_cleaned,
+  aes(x = pclass,
+      fill = pclass
+  )
+) +
+  labs(
+    x = "Passenger class",
+    y = "Frequency"
+  ) +
+  scale_fill_viridis_d(option = "magma") +
+  geom_bar()
+
+
+
+```
+
+## Chi-square Test
+
+```{r pclass-chisq-test}
+#| warning: false
+#| code-fold: false
+
+p_class <- c(216, 184, 491)
+props <- c(0.242, 0.207, 0.551)
+
+test_pclass <- chisq.test(p_class, p = props )
+
+test_pclass
+
+# Printing the p-value
+test_pclass$p.value
+
+
+# Printing the statistic
+test_pclass$statistic
+
+
+
+```
+
+At a 0.05 level of significance, there is no sufficient evidence to show that passenger classes were equally common on-board the Titanic.
