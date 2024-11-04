@@ -1,0 +1,577 @@
+---
+title: "An investigation of the relationship between fertility & GDP per capita using scatterplot analysis"
+author: "Julissa Martinez & Patrice Lewis"
+date: "`r Sys.Date()`"
+format: html
+knitr:
+  opts_chunk:      ########## set global options ############
+    collapse: true # keep code from blocks together (if shown)
+    echo: false    # don't show code
+    message: true  # show messages
+    warning: false  # show warnings
+    error: true    # show error messages
+    comment: ""    # don't show ## with printed output
+    R.options:    
+      digits: 3    # round to three digits
+      self-contained: true
+      toc: true
+      code-fold: true
+---
+
+# Introduction
+
+Ggplot2 is a package used to create graphs and visualize data. The main three components of ggplot2 are the data, aesthetics and geom layers. In the data layer, you are stating what data will be used to graph. In aesthetics, how the variables are being mapped is specified and in geom, what type of graph you want produced is specified.
+
+![](images/ggplot2_image.png){fig-align="center" width="359"}
+
+# Methods
+
+Analyses were conducted with `r stringr::word(R.Version()$version.string, 1, 3)` with the `tidyverse` (`r packageVersion("tidyverse")`), `rUM` (`r packageVersion("rUM")`), `table1` (`r packageVersion("table1")`) packages used to preprocess and summarize data.[@R-base; @R-tidyverse; @tidyverse2019; @R-rUM; @R-table1]
+
+```{r setup}
+#| include: false
+
+library(tidyverse)
+# Contains colour palette for ggplot
+library(viridis)
+# Contains "gganimate"
+library(ggplot2)
+
+# CSV file was downloaded via Canvas for "Continent/Region" file. 
+country_regions_table_20220628 <- read_csv("raw_data/country_regions_table_20220628.csv", na = c("N/A", ""))
+
+# CSV file is downloaded via Gapminder website for "Population,total".
+population_total <- read_csv("raw_data/population_total.csv")
+
+# CSV file is downloaded via Gapminder website for "Babies per woman (total fertility)".
+children_per_woman_total_fertility <- read_csv("raw_data/children_per_woman_total_fertility.csv")
+
+# CSV file is downloaded via Gapminder website for "Life expectancy (years)".
+life_expectancy_years <- read_csv("raw_data/life_expectancy_years.csv")
+
+# CSV file is downloaded via Gapminder website for "Infant mortality (rate per 1000 births)".
+inf_mort_rate <- read_csv("raw_data/infant_mortality_rate_per_1000_births.csv")
+
+# CSV file is downloaded via Gapminder website for "Total GDP(PPP$, inflation-adjusted)".
+total_gdp_ppp_inf_adj <- read_csv("raw_data/total_gdp_ppp_inflation_adjusted.csv")
+
+```
+
+```{r country-reg-setup}
+
+# Gives a snapshot of variables
+# glimpse(country_regions_table_20220628)
+
+# Country & Regions data stored in this environment
+country_reg <- as_tibble(country_regions_table_20220628)
+country_reg2 <- country_reg |>
+  # selects only data variables required
+  select(country,continent,region)
+  
+```
+
+```{r total-fertility-setup}
+
+# Fertility(total) data stored in this environment
+total_fertility <- as_tibble(children_per_woman_total_fertility) %>%
+  # Performed data tidying 
+  pivot_longer(!country,
+  names_to = "year",
+  values_to = "Fertility")
+
+# Gives a snapshot of variables
+# glimpse(total_fertility)
+
+```
+
+```{r pop-total-setup}
+
+# Used to visualize dataset
+# glimpse(population_total)
+
+# Population data is contained in this environment
+pop_total <- as_tibble(population_total) %>% 
+  # Performed data tidying 
+  pivot_longer(!country,
+  names_to = "year",
+  values_to = "Population")
+
+# str(pop_total)
+
+# Used to examine unique values & characters in this variable
+# unique(pop_total)
+
+
+```
+
+```{r inf-mort-rate-setup}
+
+# Infant mortality data stored in this environment
+infant_mort <- as_tibble(inf_mort_rate) %>% 
+  pivot_longer(!country,
+  names_to = "year",
+  values_to = "infant_mortality") 
+
+# Gives a snapshot of variables
+# glimpse(infant_mort)
+
+```
+
+```{r life-exp-setup}
+
+# Used to visualize dataset
+# glimpse(life_expectancy_years)
+
+life_expec <- as_tibble(life_expectancy_years) %>% 
+  # Performed data tidying
+  pivot_longer(!country,
+  names_to = "year",
+  values_to = "life_expectancy")
+
+# glimpse(life_expec)
+```
+
+```{r gdp-adj-setup}
+
+# Used to visualize dataset
+# glimpse(total_gdp_ppp_inf_adj)
+
+# GDP data stored in this environment
+gdp_adj <- as_tibble(total_gdp_ppp_inf_adj) %>% 
+  # Performed data tidying
+  pivot_longer(!country,
+  names_to = "year",
+  values_to = "GDP")
+
+# glimpse(gdp_adj)
+
+```
+
+```{r joining}
+#| results: hide
+
+# Full_join() used to combine 'country/region' data with 'life expectancy'
+# data because of the predictive values it contained (1799-2099)
+datafull <- full_join(country_reg2,life_expec)
+# Gives a snapshot of variables
+# glimpse (datafull)
+
+# Full_join() used to combine 'datafull' with 'infant mortality'
+# data because of the predictive values it contains (1799-2099)
+datafull_1 <- full_join(datafull,infant_mort)
+# Gives a snapshot of variables
+# datafull_1
+
+# Left_join() used to combine 'datafull_1' with 'total fertility'
+# data to match previous data set with respective values
+dataleft <- left_join(datafull_1,total_fertility)
+# Gives a snapshot of variables
+#glimpse(dataleft)
+
+# Left_join() used to combine 'dataleft' with 'total population' 
+# data to match previous data set with the respective values
+dataleft_1 <- left_join(dataleft,pop_total)
+# Gives a snapshot of variables
+# glimpse(dataleft_1)
+# Used to determine structure of variables in df after joining
+# str(dataleft_1)
+
+# Left_join function used to combine 'dataleft_1' with 'GDP'
+# data to match previous data set with respective values
+dataleft_2 <- left_join(dataleft_1,gdp_adj)
+# Used to determine structure of variables in df after joining
+# str(dataleft_2)
+
+
+# Reorganize data columns according to 'dslabs' package
+
+dataleft_2 <- dataleft_2 %>% 
+  relocate(infant_mortality, .before = life_expectancy) %>% 
+  relocate(continent, .after = `GDP`) %>% 
+  relocate(region, .after = continent)
+# Used to determine structure of variables in df after reorganizing
+
+# str(dataleft_2)
+
+```
+
+```{r computed-gdppc}
+
+# Used to examine unique values in 'Population' variable
+# unique(dataleft_2$Population)
+
+
+# Used to identify class of 'Population' variable
+# class(dataleft_2$Population)
+
+# Extracts characters from 'Population' variable and
+# separates them into this environment
+pop.char <-  
+  str_extract(dataleft_2$Population,"[aA-zZ]+")
+
+
+# Extracts digits from 'Population' variable
+# digits from population variable separated into this environment
+pop.num <- 
+  str_extract(dataleft_2$Population,"[[:digit:]]+\\.*[[:digit:]]*")
+
+
+# Combines population digits and character data frames into one environment
+pop_values <- data.frame(pop.num, pop.char)
+
+
+# Converts 'pop.num' (digit column) from character into numeric values
+pop_values$pop.num <- as.numeric(pop_values$pop.num)
+# Used to determine structure of variables
+# str(pop_values)
+
+
+######### Repeat steps for GDP  #########
+
+# Examines unique values for 'GDP'
+# unique(dataleft_2$GDP)
+
+# Identifies class of 'GDP' variable
+# class(dataleft_2$GDP)
+
+# Extracts character values from 'GDP' variable
+# and separates them into this environment
+gdp.char <- 
+  str_extract(dataleft_2$GDP,"[aA-zZ]+")
+# str(gdp.char)
+
+# Extracts digits from 'GDP' variable and 
+# separates them into this environment
+gdp.num <- 
+  str_extract(dataleft_2$GDP,"[[:digit:]]+\\.*[[:digit:]]*")
+# str(gdp.num)
+
+# Combine 'GDP' character & numeric data into one environment
+gdp_values <- data.frame(gdp.num, gdp.char)
+# str(gdp_values)
+
+# Converts gdp.num to numeric class
+gdp_values$gdp.num <- as.numeric(gdp_values$gdp.num)
+# str(gdp_values)
+
+# Checks for unique characters
+# unique(pop.char)
+
+# Converts character values to numeric for population data
+pop_category <- mutate(pop_values, category = case_when(
+  pop.char == "M" ~ 1e6,
+  pop.char == "B" ~ 1e9,
+  pop.char == 'k' ~ 1e3
+))
+# glimpse(pop_category)
+
+# Creates new column of the product of 'gdp_final'
+pop_data <- pop_category %>% 
+mutate(pop_final = pop.num*category) %>%  select(pop_final)
+
+# Gives snapshort of pop_data to check variables
+# glimpse(pop_data)
+
+
+######### repeat steps for 'GDP' #########
+
+# Reports unique values
+# unique(gdp.char)
+
+# Converts 'GDP' character values to numeric based on exponentials
+gdp_category <- mutate(gdp_values, category_gdp = case_when(
+  gdp.char == "M" ~ 1e6,
+  gdp.char == "B" ~ 1e9,
+  gdp.char == 'TR' ~ 1e12
+))
+gdp_data <- gdp_category %>% 
+# creates new column with the product of two numeric variables
+  mutate(gdp_final = gdp.num*category_gdp)
+
+gdp_final <- gdp_data %>% 
+  select(gdp_final)
+
+# str(gdp_final)
+```
+
+```{r joining-2}
+#| results: hide
+
+# Joins country region table and population numeric table
+gdp_per_cap <- data.frame(dataleft_2$country, dataleft_2$year, 
+                           pop_data$pop_final, gdp_data$gdp_final)
+# str(gdp_per_cap)
+
+# Computed 'GDP per capita' variable
+gdp_per_capita <- gdp_per_cap %>% 
+  mutate(gdppc = gdp_data.gdp_final/ pop_data.pop_final)
+
+gdp_per_capita %>%  
+  select(dataleft_2.country, dataleft_2.year,gdppc)
+
+
+# str(gdp_per_capita)
+
+```
+
+```{r joining-final}
+#| results: hide
+
+# glimpse(dataleft_2)
+
+# Left join() used to match computed GDP per capita to original 'dataleft_2' 
+# table computed 
+data_table_full <- left_join(dataleft_2, gdp_per_capita, 
+                            by = c("country" = "dataleft_2.country", 
+                                   "year" = "dataleft_2.year"))
+
+
+# str(data_table_full)
+
+# Removes unnecessary computed variables
+data_table_full2 <- data_table_full[,-c(6,7)] %>% 
+  # Set number of decimal places
+  mutate_if(is.numeric, round, digits = 2) %>% 
+  relocate(continent, .after = `gdppc`) %>% 
+  relocate(region, .after = continent) 
+
+# Renames columns based on gapminder data
+colnames(data_table_full2)[5] = "fertility"
+colnames(data_table_full2)[8] = "gdpPerCap"
+colnames(data_table_full2)[7] = "gdp"
+colnames(data_table_full2)[6] = "population"
+
+
+# glimpse(data_table_full2)
+```
+
+```{r tibble-clean-data}
+#| warnings: true
+
+full_table_df <-                   
+  as_tibble(data_table_full2)
+# Prints full tibble
+# print(full_table_df)
+
+scatterplot_table_df <- as_tibble(data_table_full2)%>% 
+  select(country, continent, year, population, fertility, gdpPerCap)
+
+# Assigns year to class "integer"
+scatterplot_table_df$year <- as.integer(scatterplot_table_df$year)
+
+scatterplot <- scatterplot_table_df %>%  
+ filter(
+  # for the 5 continents w/o "NA"s
+  continent == c("Africa", "Americas", "Asia", "Europe", "Oceania")
+)                           
+
+
+
+```
+
+```{r write-csv}
+
+# Contains newly computed dataset based on path 
+write.csv(scatterplot_table_df, "clean_data/gapminder_scatterplot.csv")
+
+
+```
+
+# Results
+
+```{r plot-years}
+#| label: fig-plot-multiple-years
+#| code-fold: false
+#| fig-cap: Bubble size is indicative of a country's population. 
+
+plot_multiple_years <-
+  ggplot(data = filter(scatterplot_table_df, 
+                       year %in% c(1860, 1910, 1960, 2010))
+  ) +
+  theme_minimal() +
+  aes(
+    x = gdpPerCap,
+    y = fertility,
+    size = population,
+    color = continent
+  ) +
+  scale_x_continuous(
+    name = "GDP per Capita",
+    trans = "log10",
+    labels = scales::comma
+  ) +
+  scale_size(range = c(0, 20)) +
+  guides(size = "none") +
+  scale_colour_discrete(na.translate = F, name = "Continent") +
+  labs(
+    title = "Fertility decreases as GDP per capita increases",
+    subtitle = "throughout 1860, 1910, 1960 and 2010",
+    caption = "Source: Gapminder",
+    y = "Fertility (babies per woman)"
+  ) +
+  geom_point(alpha = 0.3) +
+  facet_wrap(~ year, nrow = 2)
+
+plot_multiple_years
+```
+
+
+
+```{r gganimate-time}
+#| code-fold: false
+
+ggplot(scatterplot_table_df,
+       aes(x = gdpPerCap,
+           y = fertility,
+           size = population,
+           color = continent )
+) +
+  geom_point(show.legend = TRUE, alpha = 0.7) +
+  # Assigns color palette 
+  scale_color_viridis_d() +
+  scale_size(range =c(2, 12)) +
+  scale_x_log10() +
+  labs(x = "GDP per capita", y = "Fertility") +
+  # Assigns the gganimate features
+  transition_time(year) +
+  # Prints time of current frame
+  labs(title = "Year: {frame_time}")
+
+
+```
+
+![image](full_frame_time.gif)
+
+```{r gganimate-facet-continent}
+#| code-fold: false
+
+ggplot(scatterplot,
+       aes(x = gdpPerCap, 
+           y = fertility,
+           size = population, 
+           colour = continent)
+) +
+  geom_point(alpha = 0.7, show.legend = TRUE) +
+  scale_size(range = c(2, 12)) +
+  scale_x_log10() +
+  # Groups output by continents
+  facet_wrap(~continent) +
+  # Contains gganimate features
+  labs(
+    title = 'Year: {closest_state}', 
+    x = 'GDP per capita', 
+    y = 'fertility'
+  ) +
+  transition_states(year, transition_length = 3, state_length = 1) +
+  ease_aes('linear', interval = 2.0)
+```
+
+![Fertility vs GDP per capita: Negative Relationship](facet_continent.gif)
+
+#########Ignore Code \###############
+
+```{r scatterplot-2011}
+#| fig-cap: 'Fertility trends by GDP per capita in 2011.'
+#| warning: false
+
+# data preparation
+plot_labels <- scatterplot_table_df %>% 
+  mutate(annotation = ifelse(gdpPerCap > 1e+04 & fertility > 5, "yes","no"))
+
+# plot
+scatterplot_2011 <-
+  ggplot(data = filter(scatterplot_table_df, year == 2011)
+  ) +
+  aes(
+    x =gdpPerCap,
+    y = fertility,
+    size = population,
+    color = continent
+  ) +
+  scale_size(range = c(1, 20)) +  
+  labs(
+    x = "GDP per capita",
+    y = "Fertility",
+    title = "Direct negative relationship between Fertility & GDP per capita",
+    subtitle = "among countries in 2011",
+    caption = "Source: Computed Gapminder Dataset"
+  ) +
+  # Logged scale to 10 to improve appearance
+  # Include the code for numbers
+  # Limits of x axis obtained from summary() function
+  scale_x_log10(limits = c(110, 262069)) +
+  scale_y_log10(
+    # Limits of y axis obtained from summary() function
+    limits = c(2, 9)
+  ) +
+  geom_point(alpha = 0.5) +
+  facet_wrap(~continent) +
+  labs(title = 'Year: {frame_time}', x = 'GDP per capita', y = 'fertility') +
+  transition_time(year) +
+  ease_aes('linear')
+
+
+
+
+```
+
+```{r scatterplot-facet-year}
+
+scatterplot_table_df$year <- as.numeric(scatterplot_table_df$year)
+
+scatterplot_facet <-
+  # Plotted the full_table_df data for 4 separate years
+  ggplot(data = filter(scatterplot_table_df, year %in% c(1860, 1910, 1960, 2010))) +
+  aes(
+    x = gdpPerCap,
+    y = fertility,
+    size = population,
+    color = continent
+  ) +
+  scale_size(range = c(1, 20)) +
+  labs(
+    x = "GDP Per Capita",
+    y = "Fertility",
+    title = "Negative relationship between Fertility & GDP per capita",
+    subtitle = "among countries in 1860, 1910, 1960 and 2010",
+    caption = "Source: Computed Gapminder Dataset",
+  ) +
+  # The range of GDP per capita was between 500 and 262069 
+  # using summary() function 
+  scale_x_log10(limits = c(500, 262069)) +
+  # The range of life expectancy was between 2 and 8 using 
+  # summary() function 
+  ylim(0, 9) +
+  # Apply facets to create a separate plot for each year
+  facet_wrap(~year) +
+  geom_point(alpha = 0.5)
+
+ 
+scatterplot_facet
+
+
+
+
+```
+
+# Conclusion
+
+A global negative trend is depicted between `GDP per capita` and `fertility` over time. Such changes were due to wars as well as social, cultural and economic changes that incentivized smaller families especially in Asian countries. Most European, American and Asian countries depicted significant decreases in fertility rates over time as `GDP per capita` increased. On the other hand, African countries remain in the top rank for fertility over the years. These differences are depicted in the population pyramid changes of developed vs developing countries. Public health policies can be tailored to incentivizing increased fertility in developed countries to ensure generation continuity, and effective family planning strategies in developing countries.
+
+![Population Pyramid: Developed vs Developing countries](pop-pyramid.png){fig-align="center"}
+
+# References {.unnumbered}
+
+```{r}
+#| include: false
+
+# automatically create a bib database for loaded R packages & rUM
+knitr::write_bib(
+  c(
+    .packages(),
+    "rUM",
+    "table1"
+  ),
+  "packages.bib"
+)
+```
